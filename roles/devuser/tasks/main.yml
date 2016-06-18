@@ -1,0 +1,83 @@
+---
+
+  - name: Update apt cache
+    apt: update_cache=yes
+
+  - name: install sudo package
+    package: name=sudo state=latest
+
+  - name: create {{developer_name}} group 
+    group: name={{developer_name}} state=present
+
+  - name: Make sure user is on server and generate ssh key for it
+    user: name={{developer_name}}
+        generate_ssh_key=yes
+        group={{developer_name}}
+        groups=sudo,ale
+        shell=/bin/bash
+
+  - name: Add public keys for our developer user
+    authorized_key: user={{developer_name}}
+                    key="{{ lookup('file', item) }}"
+    with_fileglob:
+      - "{{ user_public_key }}"
+
+  - name: Passwordless sudo for {{ developer_name }}
+    lineinfile: dest=/etc/sudoers.d/90-cloud-init-users line='{{developer_name}} ALL=(ALL) NOPASSWD:ALL' state=present
+
+  - name: Install git
+    package: name=git state=latest
+
+  - name: Install fontconfig
+    package: name=fontconfig state=latest
+
+  - name: Install pip
+    package: name=python-pip state=latest
+
+  - name: Install powerline from pip
+    pip: name=powerline-status
+  
+  - name: Install powerline fonts
+    get_url: url=https://github.com/powerline/powerline/raw/develop/font/PowerlineSymbols.otf dest=/usr/share/fonts/
+
+  - name: Install powerline conf
+    get_url: url=https://github.com/powerline/powerline/raw/develop/font/10-powerline-symbols.conf dest=/etc/fonts/conf.d/
+
+  - name: Update fonts cache
+    shell: fc-cache -vf /usr/share/fonts/
+
+  - name: Create default .bashrc
+    shell: cp /etc/skel/.bashrc /home/{{developer_name}}/.bashrc
+
+  - name: Set .bashrc owner
+    file: path=/home/{{developer_name}}/.bashrc owner={{developer_name}}  
+
+  - name: Enable powerline for our user
+    blockinfile:
+      dest: /home/{{developer_name}}/.bashrc
+      block: |
+        # enable powerline
+        powerline-daemon -q
+        POWERLINE_BASH_CONTINUATION=1
+        POWERLINE_BASH_SELECT=1
+        . /usr/local/lib/python2.7/dist-packages/powerline/bindings/bash/powerline.sh
+
+  - name: Configure vim powerline
+    blockinfile:
+      dest: /home/{{developer_name}}/.vimrc
+      marker: '" {mark} ANSIBLE MANAGED BLOCK'
+      create: yes
+      block: |
+        set  rtp+=/usr/local/lib/python2.7/dist-packages/powerline/bindings/vim/
+        set laststatus=2
+        set t_Co=256
+
+  - name: Install powerline git status
+    pip: name=powerline-gitstatus state=latest
+
+  - name: Create .config/powerline
+    file: path=/home/{{developer_name}}/.config/powerline state=directory owner={{developer_name}}
+
+  - name: copy powerline config from local
+    copy: src=./static/powerline_config.json dest=/home/{{developer_name}}/.config/powerline/config.json owner={{developer_name}}
+

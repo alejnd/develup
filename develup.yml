@@ -1,0 +1,32 @@
+---
+
+- name: Create AWS instance
+
+  vars:
+    developer_name: ale
+    security_group_name: basic_security_group
+    ec2_region: eu-west-1
+    key_name: "{{developer_name}}_box_key.pem"
+
+  hosts: 127.0.0.1
+  connection: local
+  gather_facts: False
+  remote_user: ubuntu
+  roles:
+       - mkec2key
+       - basicacl
+       - mkec2server
+
+- name: Add development user and basic setup
+
+  vars:
+    developer_name: ale
+    ansible_ssh_private_key_file: "{{developer_name}}_box_key.pem"
+    user_public_key: ~/.ssh/id_rsa.pub
+  gather_facts: True
+  hosts: tag_Name_{{developer_name}}_box
+  become: yes
+  become_user: root
+  remote_user: ubuntu
+  roles:
+       - devuser
