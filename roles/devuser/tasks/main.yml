@@ -13,7 +13,7 @@
     user: name={{developer_name}}
         generate_ssh_key=yes
         group={{developer_name}}
-        groups=sudo,ale
+        groups=sudo,{{developer_name}}
         shell=/bin/bash
 
   - name: Add public keys for our developer user
